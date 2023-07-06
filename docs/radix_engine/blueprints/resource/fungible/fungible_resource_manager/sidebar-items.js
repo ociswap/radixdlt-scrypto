@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DIVISIBILITY_MAXIMUM"],"enum":["FungibleResourceManagerError"],"fn":["__stability","__static_ref_initialize","check_mint_amount","verify_divisibility"],"static":["LAZY"],"struct":["FungibleResourceManagerBlueprint","MAX_MINT_AMOUNT"],"type":["FungibleResourceManagerDivisibilitySubstate","FungibleResourceManagerTotalSupplySubstate"]};

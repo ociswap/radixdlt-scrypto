@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DepositResourceEvent","RecallResourceEvent","WithdrawResourceEvent"],"struct":["LockFeeEvent"]};

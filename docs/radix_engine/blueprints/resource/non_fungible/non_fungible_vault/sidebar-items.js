@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["NON_FUNGIBLE_VAULT_CONTENTS_INDEX"],"enum":["NonFungibleVaultContentsEntry","NonFungibleVaultError"],"struct":["NonFungibleVaultBalanceSubstate","NonFungibleVaultBlueprint"]};

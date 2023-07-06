@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AccessController","Account","ConsensusManager","Identity","MultiResourcePool","OneResourcePool","TwoResourcePool","Validator"],"trait":["AccessControllerFunctions","AccountFunctions","ConsensusManagerFunctions","IdentityFunctions","MultiResourcePoolFunctions","OneResourcePoolFunctions","TwoResourcePoolFunctions","ValidatorFunctions"]};

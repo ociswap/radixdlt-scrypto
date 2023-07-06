@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["POOL_MANAGER_ROLE"],"struct":["PoolNativePackage"]};

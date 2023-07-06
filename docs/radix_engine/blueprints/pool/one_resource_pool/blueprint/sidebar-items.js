@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ONE_RESOURCE_POOL_BLUEPRINT_IDENT"],"struct":["OneResourcePoolBlueprint"]};

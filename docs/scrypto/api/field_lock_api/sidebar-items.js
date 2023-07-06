@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["LockFlags"],"trait":["ClientFieldLockApi"],"type":["FieldLockHandle"]};

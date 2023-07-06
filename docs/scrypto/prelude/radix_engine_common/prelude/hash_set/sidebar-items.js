@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["new","with_capacity"],"macro":["hashset"],"struct":["Difference","Drain","DrainFilter","Intersection","IntoIter","Iter","SymmetricDifference","Union","ext_HashSet"],"type":["DefaultHashBuilder","HashSet"]};

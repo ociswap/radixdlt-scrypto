@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["NON_FUNGIBLE_RESOURCE_MANAGER_DATA_STORE"],"enum":["NonFungibleResourceManagerError"],"fn":["create_non_fungibles"],"struct":["NonFungibleResourceManagerBlueprint","NonFungibleResourceManagerMutableFieldsSubstate"],"type":["NonFungibleResourceManagerIdTypeSubstate","NonFungibleResourceManagerTotalSupplySubstate"]};

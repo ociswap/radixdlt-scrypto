@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["globalize_fungible_with_initial_supply","globalize_non_fungible_with_initial_supply","globalize_resource_manager"]};

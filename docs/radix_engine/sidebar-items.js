@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"macro":["add_role","event_schema","log","method_auth_template","roles_template"],"mod":["blueprints","errors","kernel","system","track","transaction","types","utils","vm"]};

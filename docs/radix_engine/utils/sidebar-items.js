@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ExtractSchemaError","InstructionSchemaValidationError"],"fn":["extract_definition","validate_call_arguments_to_native_components"],"macro":["add_role","event_schema","method_auth_template","roles_template"],"mod":["macros","native_blueprint_call_validator","package_extractor"],"struct":["LocatedInstructionSchemaValidationError"]};

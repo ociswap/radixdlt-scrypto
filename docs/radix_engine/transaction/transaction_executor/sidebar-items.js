@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["TransactionResultType"],"fn":["execute_and_commit_transaction","execute_transaction"],"struct":["ExecutionConfig","FeeReserveConfig","TransactionExecutor"]};

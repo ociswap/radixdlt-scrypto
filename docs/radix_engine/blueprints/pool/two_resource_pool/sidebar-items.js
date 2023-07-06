@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["TWO_RESOURCE_POOL_BLUEPRINT_IDENT"],"enum":["TwoResourcePoolError"],"mod":["blueprint","error","events","substates"],"struct":["ContributionEvent","DepositEvent","RedemptionEvent","TwoResourcePoolBlueprint","TwoResourcePoolSubstate","WithdrawEvent"]};

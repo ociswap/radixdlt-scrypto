@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["AnyComponent","Blueprint","Global","Globalizing","MetadataMethods","Owned"],"trait":["ComponentState","FnMapping","HasMethods","HasStub","HasTypeInfo","MethodMapping"]};

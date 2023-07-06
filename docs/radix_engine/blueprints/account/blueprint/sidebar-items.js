@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ACCOUNT_RESOURCE_DEPOSIT_CONFIGURATION_INDEX","ACCOUNT_VAULT_INDEX","SECURIFY_ROLE"],"enum":["AccountError"],"struct":["AccountBlueprint","AccountOwnerBadgeData","AccountSubstate","SecurifiedAccount"],"type":["AccountResourceDepositRuleEntry","AccountVaultIndexEntry"]};

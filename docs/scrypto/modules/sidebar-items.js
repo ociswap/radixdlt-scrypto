@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ModuleHandle","Mutability"],"mod":["access_rules","metadata","module","royalty"],"struct":["AccessRules","Attached","Metadata","Royalty","RoyaltyRoles"],"trait":["Attachable","HasAccessRules","HasComponentRoyalties","HasMetadata"]};
