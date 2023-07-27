@@ -95,6 +95,12 @@ pub struct NewSymbols {
     pub new_address_id: Option<u32>,
 }
 
+impl Default for ManifestBuilder {
+    fn default() -> Self {
+        ManifestBuilder::new()
+    }
+}
+
 impl ManifestBuilder {
     /// Starts a new transaction builder.
     pub fn new() -> Self {
