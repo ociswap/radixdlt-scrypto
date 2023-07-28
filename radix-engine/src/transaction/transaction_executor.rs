@@ -4,7 +4,7 @@ use crate::blueprints::transaction_tracker::{TransactionStatus, TransactionTrack
 use crate::errors::*;
 use crate::kernel::id_allocator::IdAllocator;
 use crate::kernel::kernel::KernelBoot;
-use crate::system::system::{KeyValueEntrySubstate, SubstateMutability};
+use crate::system::system::{FieldSubstate, KeyValueEntrySubstate, SubstateMutability};
 use crate::system::system_callback::SystemConfig;
 use crate::system::system_modules::costing::*;
 use crate::system::system_modules::execution_trace::ExecutionTraceModule;
@@ -124,6 +124,7 @@ impl ExecutionConfig {
     pub fn for_preview() -> Self {
         Self {
             enabled_modules: EnabledModules::for_preview(),
+            enable_cost_breakdown: true,
             ..Self::default()
         }
     }
@@ -134,6 +135,11 @@ impl ExecutionConfig {
         } else {
             self.enabled_modules.remove(EnabledModules::KERNEL_TRACE);
         }
+        self
+    }
+
+    pub fn with_cost_breakdown(mut self, enabled: bool) -> Self {
+        self.enable_cost_breakdown = enabled;
         self
     }
 
@@ -174,31 +180,24 @@ where
 
     pub fn execute(
         &mut self,
-        transaction: &Executable,
+        executable: &Executable,
         fee_reserve_config: &FeeReserveConfig,
         execution_config: &ExecutionConfig,
     ) -> TransactionReceipt {
+        let free_credit = executable.fee_payment().free_credit_in_xrd;
+        let tip_percentage = executable.fee_payment().tip_percentage;
         let fee_reserve = SystemLoanFeeReserve::new(
             fee_reserve_config.cost_unit_price,
             fee_reserve_config.usd_price,
             fee_reserve_config.state_expansion_price,
-            transaction.fee_payment().tip_percentage,
+            tip_percentage,
             execution_config.cost_unit_limit,
             fee_reserve_config.system_loan,
             execution_config.abort_when_loan_repaid,
         )
-        .with_free_credit(transaction.fee_payment().free_credit_in_xrd);
+        .with_free_credit(free_credit);
+        let fee_table = FeeTable::new();
 
-        self.execute_with_fee_reserve(transaction, execution_config, fee_reserve, FeeTable::new())
-    }
-
-    fn execute_with_fee_reserve(
-        &mut self,
-        executable: &Executable,
-        execution_config: &ExecutionConfig,
-        fee_reserve: SystemLoanFeeReserve,
-        fee_table: FeeTable,
-    ) -> TransactionReceipt {
         // Dump executable
         #[cfg(not(feature = "alloc"))]
         if execution_config
@@ -279,8 +278,12 @@ where
                         }
 
                         // Distribute fees
-                        let (mut fee_summary, fee_payments) =
-                            Self::finalize_fees(&mut track, costing_module.fee_reserve, is_success);
+                        let (mut fee_summary, fee_payments) = Self::finalize_fees(
+                            &mut track,
+                            costing_module.fee_reserve,
+                            is_success,
+                            free_credit,
+                        );
                         fee_summary.execution_cost_breakdown = costing_module
                             .costing_traces
                             .into_iter()
@@ -375,9 +378,10 @@ where
                 return None;
             }
         };
-        let substate: ConsensusManagerSubstate = track.read_substate(handle).0.as_typed().unwrap();
+        let substate: FieldSubstate<ConsensusManagerSubstate> =
+            track.read_substate(handle).0.as_typed().unwrap();
         track.close_substate(handle);
-        Some(substate.epoch)
+        Some(substate.value.0.epoch)
     }
 
     fn validate_epoch_range(
@@ -415,11 +419,13 @@ where
             )
             .unwrap()
             .0;
-        let substate: TransactionTrackerSubstate =
+        let substate: FieldSubstate<TransactionTrackerSubstate> =
             track.read_substate(handle).0.as_typed().unwrap();
         track.close_substate(handle);
 
         let partition_number = substate
+            .value
+            .0
             .partition_for_expiry_epoch(expiry_epoch)
             .expect("Transaction tracker should cover all valid epoch ranges");
 
@@ -601,6 +607,7 @@ where
         track: &mut Track<S, SpreadPrefixKeyMapper>,
         fee_reserve: SystemLoanFeeReserve,
         is_success: bool,
+        free_credit: Decimal,
     ) -> (FeeSummary, IndexMap<NodeId, Decimal>) {
         // Distribute royalty
         for (_, (recipient_vault_id, amount)) in fee_reserve.royalty_cost() {
@@ -615,8 +622,9 @@ where
                 )
                 .unwrap();
             let (substate_value, _store_access) = track.read_substate(handle);
-            let mut substate: LiquidFungibleResource = substate_value.as_typed().unwrap();
-            substate.put(LiquidFungibleResource::new(amount));
+            let mut substate: FieldSubstate<LiquidFungibleResource> =
+                substate_value.as_typed().unwrap();
+            substate.value.0.put(LiquidFungibleResource::new(amount));
             track.update_substate(handle, IndexedScryptoValue::from_typed(&substate));
             track.close_substate(handle);
         }
@@ -654,24 +662,43 @@ where
                 )
                 .unwrap();
             let (substate_value, _store_access) = track.read_substate(handle);
-            let mut substate: LiquidFungibleResource = substate_value.as_typed().unwrap();
-            substate.put(locked);
+            let mut substate: FieldSubstate<LiquidFungibleResource> =
+                substate_value.as_typed().unwrap();
+            substate.value.0.put(locked);
             track.update_substate(handle, IndexedScryptoValue::from_typed(&substate));
             track.close_substate(handle);
 
             // Record final payments
             *fee_payments.entry(vault_id).or_default() += amount;
         }
+        // Free credit is locked first and thus used last
+        if free_credit.is_positive() {
+            let amount = Decimal::min(free_credit, required);
+            collected_fees.put(LiquidFungibleResource::new(amount));
+            required -= amount;
+        }
 
         let tips_to_distribute = fee_summary.tips_to_distribute();
         let fees_to_distribute = fee_summary.fees_to_distribute();
 
-        // Sanity check
-        assert_eq!(required, Decimal::ZERO);
-        assert_eq!(fee_summary.total_bad_debt_xrd, Decimal::ZERO);
-        assert_eq!(
-            tips_to_distribute + fees_to_distribute,
-            collected_fees.amount() - fee_summary.total_royalty_cost_xrd /* royalty already distributed */
+        // Sanity checks
+        assert!(
+            fee_summary.total_bad_debt_xrd == Decimal::ZERO,
+            "Bad debt is non-zero: {}",
+            fee_summary.total_bad_debt_xrd
+        );
+        assert!(
+            required == Decimal::ZERO,
+            "Locked fee does not cover transaction cost: {} required",
+            required
+        );
+        let remaining_collected_fees = collected_fees.amount() - fee_summary.total_royalty_cost_xrd /* royalty already distributed */;
+        let to_distribute = tips_to_distribute + fees_to_distribute;
+        assert!(
+            to_distribute == remaining_collected_fees,
+            "Remaining collected fee isn't equal to amount to distribute: {} != {}",
+            remaining_collected_fees,
+            to_distribute,
         );
 
         if !tips_to_distribute.is_zero() || !fees_to_distribute.is_zero() {
@@ -686,9 +713,9 @@ where
                 )
                 .unwrap()
                 .0;
-            let substate: ConsensusManagerSubstate =
+            let substate: FieldSubstate<ConsensusManagerSubstate> =
                 track.read_substate(handle).0.as_typed().unwrap();
-            let current_leader = substate.current_leader;
+            let current_leader = substate.value.0.current_leader;
             track.close_substate(handle);
 
             // Update validator rewards
@@ -701,12 +728,14 @@ where
                 )
                 .unwrap()
                 .0;
-            let mut substate: ValidatorRewardsSubstate =
+            let mut substate: FieldSubstate<ValidatorRewardsSubstate> =
                 track.read_substate(handle).0.as_typed().unwrap();
             let proposer_rewards = if let Some(current_leader) = current_leader {
                 let rewards = tips_to_distribute * TIPS_PROPOSER_SHARE_PERCENTAGE / dec!(100)
                     + fees_to_distribute * FEES_PROPOSER_SHARE_PERCENTAGE / dec!(100);
                 substate
+                    .value
+                    .0
                     .proposer_rewards
                     .entry(current_leader)
                     .or_default()
@@ -719,7 +748,7 @@ where
                 tips_to_distribute * TIPS_VALIDATOR_SET_SHARE_PERCENTAGE / dec!(100)
                     + fees_to_distribute * FEES_VALIDATOR_SET_SHARE_PERCENTAGE / dec!(100)
             };
-            let vault_node_id = substate.rewards_vault.0 .0;
+            let vault_node_id = substate.value.0.rewards_vault.0 .0;
             track.update_substate(handle, IndexedScryptoValue::from_typed(&substate));
             track.close_substate(handle);
 
@@ -733,9 +762,9 @@ where
                 )
                 .unwrap()
                 .0;
-            let mut substate: LiquidFungibleResource =
+            let mut substate: FieldSubstate<LiquidFungibleResource> =
                 track.read_substate(handle).0.as_typed().unwrap();
-            substate.put(
+            substate.value.0.put(
                 collected_fees
                     .take_by_amount(proposer_rewards + validator_set_rewards)
                     .unwrap(),
@@ -763,7 +792,7 @@ where
             )
             .unwrap()
             .0;
-        let mut transaction_tracker: TransactionTrackerSubstate =
+        let mut transaction_tracker: FieldSubstate<TransactionTrackerSubstate> =
             track.read_substate(handle).0.as_typed().unwrap();
 
         // Update the status of the intent hash
@@ -772,8 +801,10 @@ where
             intent_hash,
         } = intent_hash
         {
-            if let Some(partition_number) =
-                transaction_tracker.partition_for_expiry_epoch(*expiry_epoch)
+            if let Some(partition_number) = transaction_tracker
+                .value
+                .0
+                .partition_for_expiry_epoch(*expiry_epoch)
             {
                 let handle = track
                     .acquire_lock_virtualize(
@@ -816,9 +847,10 @@ where
         //
         // Also, we need to make sure epoch doesn't jump by a large distance.
         if next_epoch.number()
-            >= transaction_tracker.start_epoch + transaction_tracker.epochs_per_partition
+            >= transaction_tracker.value.0.start_epoch
+                + transaction_tracker.value.0.epochs_per_partition
         {
-            let discarded_partition = transaction_tracker.advance();
+            let discarded_partition = transaction_tracker.value.0.advance();
             track.delete_partition(
                 TRANSACTION_TRACKER.as_node_id(),
                 PartitionNumber(discarded_partition),
@@ -826,7 +858,7 @@ where
         }
         track.update_substate(
             handle,
-            IndexedScryptoValue::from_typed(&transaction_tracker),
+            IndexedScryptoValue::from_typed(&FieldSubstate::new_field(transaction_tracker.value.0)),
         );
         track.close_substate(handle);
     }

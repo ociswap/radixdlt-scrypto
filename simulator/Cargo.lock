@@ -666,7 +666,7 @@ dependencies = [
 
 [[package]]
 name = "native-sdk"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "radix-engine-common",
  "radix-engine-derive",
@@ -774,9 +774,9 @@ dependencies = [
 
 [[package]]
 name = "paste"
-version = "1.0.12"
+version = "1.0.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f746c4065a8fa3fe23974dd82f15431cc8d40779821001404d10d2e79ca7d79"
+checksum = "b4b27ab7be369122c218afc2079489cdcb4b517c0a3fc386ff11e1fedfcc2b35"
 
 [[package]]
 name = "peeking_take_while"
@@ -822,9 +822,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.50"
+version = "1.0.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ef7d57beacfaf2d8aee5937dab7b7f28de3cb8b1828479bb5de2a7106f2bae2"
+checksum = "78803b62cbf1f46fde80d7c0e803111524b9877184cfe7c3033659490ac7a7da"
 dependencies = [
  "unicode-ident",
 ]
@@ -842,16 +842,16 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.23"
+version = "1.0.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8856d8364d252a14d474036ea1358d63c9e6965c8e5c1885c18f73d70bff9c7b"
+checksum = "573015e8ab27661678357f27dc26460738fd2b6c86e46f386fde94cb5d913105"
 dependencies = [
  "proc-macro2",
 ]
 
 [[package]]
 name = "radix-engine"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "bitflags",
  "colored",
@@ -879,7 +879,7 @@ dependencies = [
 
 [[package]]
 name = "radix-engine-common"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "bech32",
  "blake2",
@@ -899,11 +899,11 @@ dependencies = [
 
 [[package]]
 name = "radix-engine-constants"
-version = "0.10.0"
+version = "0.11.0"
 
 [[package]]
 name = "radix-engine-derive"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -913,7 +913,7 @@ dependencies = [
 
 [[package]]
 name = "radix-engine-interface"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "bitflags",
  "const-sha1",
@@ -938,10 +938,11 @@ dependencies = [
 
 [[package]]
 name = "radix-engine-queries"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "hex",
  "itertools",
+ "paste",
  "radix-engine",
  "radix-engine-constants",
  "radix-engine-interface",
@@ -953,7 +954,7 @@ dependencies = [
 
 [[package]]
 name = "radix-engine-store-interface"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "hex",
  "itertools",
@@ -966,7 +967,7 @@ dependencies = [
 
 [[package]]
 name = "radix-engine-stores"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "hex",
  "itertools",
@@ -1153,7 +1154,7 @@ dependencies = [
 
 [[package]]
 name = "sbor"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "const-sha1",
  "hex",
@@ -1166,7 +1167,7 @@ dependencies = [
 
 [[package]]
 name = "sbor-derive"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "proc-macro2",
  "sbor-derive-common",
@@ -1174,7 +1175,7 @@ dependencies = [
 
 [[package]]
 name = "sbor-derive-common"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "const-sha1",
  "itertools",
@@ -1200,7 +1201,7 @@ checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
 
 [[package]]
 name = "scrypto-schema"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "bitflags",
  "radix-engine-common",
@@ -1293,7 +1294,7 @@ checksum = "74233d3b3b2f6d4b006dc19dee745e73e2a6bfb6f93607cd3b02bd5b00797d7c"
 
 [[package]]
 name = "simulator"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "cargo_toml",
  "clap",
@@ -1475,7 +1476,7 @@ dependencies = [
 
 [[package]]
 name = "transaction"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "bech32",
  "ed25519-dalek",
@@ -1524,7 +1525,7 @@ checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
 
 [[package]]
 name = "utils"
-version = "0.10.0"
+version = "0.11.0"
 dependencies = [
  "indexmap 2.0.0-pre",
 ]
