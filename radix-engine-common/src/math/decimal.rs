@@ -8,6 +8,7 @@ use sbor::rust::fmt;
 use sbor::rust::format;
 use sbor::rust::prelude::*;
 use sbor::*;
+use std::ops::{Add, Div, Mul, Sub};
 
 use crate::data::manifest::ManifestCustomValueKind;
 use crate::data::scrypto::*;
@@ -616,11 +617,85 @@ macro_rules! try_from_integer {
 }
 try_from_integer!(I192, I256, I512, U192, U256, U512);
 
+pub enum MathResult<T> {
+    None,
+    Some(T),
+}
+
+impl<T> MathResult<T> {
+    pub fn unwrap(self) -> T {
+        match self {
+            MathResult::None => panic!("Unwrapping None"),
+            MathResult::Some(value) => value,
+        }
+    }
+
+    pub fn and_then<U, F>(self, f: F) -> MathResult<U>
+    where
+        F: FnOnce(T) -> MathResult<U>,
+    {
+        match self {
+            MathResult::None => MathResult::None,
+            MathResult::Some(value) => f(value),
+        }
+    }
+}
+
+impl<T> From<Option<T>> for MathResult<T> {
+    fn from(opt: Option<T>) -> Self {
+        match opt {
+            Some(value) => MathResult::Some(value),
+            None => MathResult::None,
+        }
+    }
+}
+
+impl Add for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn add(self, other: Decimal) -> MathResult<Decimal> {
+        self.safe_add(other).into()
+    }
+}
+
+impl Add<MathResult<Decimal>> for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn add(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.safe_add(other_).into())
+    }
+}
+
+impl Add<Decimal> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn add(self, other: Decimal) -> MathResult<Decimal> {
+        self.and_then(|self_| self_.safe_add(other).into())
+    }
+}
+
+impl Add<MathResult<Decimal>> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn add(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.and_then(|self_| self_.safe_add(other_).into()))
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::dec;
     use paste::paste;
+
+    #[test]
+    fn test_math_operators() {
+        let a = dec!(42);
+        let b = dec!(2);
+        let c = dec!("1.5");
+        let result = a + b + c + b;
+    }
 
     #[test]
     fn test_format_decimal() {
