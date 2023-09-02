@@ -913,8 +913,8 @@ mod tests {
         result *= dec!(4);
         result /= dec!(2);
         assert_eq!(result, dec!(10));
-        // assigns with MathResult<Decimal>
         let mut result: MathResult<Decimal> = dec!(10).into();
+        // assigns with MathResult<Decimal>
         result += dec!(5) + dec!(5);
         result -= dec!(2) - dec!(1);
         result *= dec!(4) * dec!(3);
