@@ -8,7 +8,7 @@ use sbor::rust::fmt;
 use sbor::rust::format;
 use sbor::rust::prelude::*;
 use sbor::*;
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 use crate::data::manifest::ManifestCustomValueKind;
 use crate::data::scrypto::*;
@@ -617,16 +617,17 @@ macro_rules! try_from_integer {
 }
 try_from_integer!(I192, I256, I512, U192, U256, U512);
 
+#[derive(Debug)]
 pub enum MathResult<T> {
-    None,
-    Some(T),
+    Err,
+    Ok(T),
 }
 
 impl<T> MathResult<T> {
     pub fn unwrap(self) -> T {
         match self {
-            MathResult::None => panic!("Unwrapping None"),
-            MathResult::Some(value) => value,
+            MathResult::Err => panic!("Unwrapping None"),
+            MathResult::Ok(value) => value,
         }
     }
 
@@ -635,8 +636,27 @@ impl<T> MathResult<T> {
         F: FnOnce(T) -> MathResult<U>,
     {
         match self {
-            MathResult::None => MathResult::None,
-            MathResult::Some(value) => f(value),
+            MathResult::Err => MathResult::Err,
+            MathResult::Ok(value) => f(value),
+        }
+    }
+}
+
+impl<T: PartialEq> PartialEq for MathResult<T> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (MathResult::Err, MathResult::Err) => true,
+            (MathResult::Ok(value1), MathResult::Ok(value2)) => value1 == value2,
+            _ => false,
+        }
+    }
+}
+
+impl<T: PartialEq> PartialEq<T> for MathResult<T> {
+    fn eq(&self, other: &T) -> bool {
+        match self {
+            MathResult::Ok(self_) => self_ == other,
+            _ => false,
         }
     }
 }
@@ -644,9 +664,15 @@ impl<T> MathResult<T> {
 impl<T> From<Option<T>> for MathResult<T> {
     fn from(opt: Option<T>) -> Self {
         match opt {
-            Some(value) => MathResult::Some(value),
-            None => MathResult::None,
+            Some(value) => MathResult::Ok(value),
+            None => MathResult::Err,
         }
+    }
+}
+
+impl<T> From<T> for MathResult<T> {
+    fn from(value: T) -> Self {
+        MathResult::Ok(value)
     }
 }
 
@@ -682,6 +708,185 @@ impl Add<MathResult<Decimal>> for MathResult<Decimal> {
     }
 }
 
+impl Sub for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn sub(self, other: Decimal) -> MathResult<Decimal> {
+        self.safe_sub(other).into()
+    }
+}
+
+impl Sub<MathResult<Decimal>> for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn sub(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.safe_sub(other_).into())
+    }
+}
+
+impl Sub<Decimal> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn sub(self, other: Decimal) -> MathResult<Decimal> {
+        self.and_then(|self_| self_.safe_sub(other).into())
+    }
+}
+
+impl Sub<MathResult<Decimal>> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn sub(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.and_then(|self_| self_.safe_sub(other_).into()))
+    }
+}
+
+impl Mul for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn mul(self, other: Decimal) -> MathResult<Decimal> {
+        self.safe_mul(other).into()
+    }
+}
+
+impl Mul<MathResult<Decimal>> for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn mul(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.safe_mul(other_).into())
+    }
+}
+
+impl Mul<Decimal> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn mul(self, other: Decimal) -> MathResult<Decimal> {
+        self.and_then(|self_| self_.safe_mul(other).into())
+    }
+}
+
+impl Mul<MathResult<Decimal>> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn mul(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.and_then(|self_| self_.safe_mul(other_).into()))
+    }
+}
+
+impl Div for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn div(self, other: Decimal) -> MathResult<Decimal> {
+        self.safe_div(other).into()
+    }
+}
+
+impl Div<MathResult<Decimal>> for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn div(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.safe_div(other_).into())
+    }
+}
+
+impl Div<Decimal> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn div(self, other: Decimal) -> MathResult<Decimal> {
+        self.and_then(|self_| self_.safe_div(other).into())
+    }
+}
+
+impl Div<MathResult<Decimal>> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn div(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.and_then(|self_| self_.safe_div(other_).into()))
+    }
+}
+
+impl AddAssign<Decimal> for MathResult<Decimal> {
+    fn add_assign(&mut self, rhs: Decimal) {
+        match self {
+            MathResult::Ok(self_) => *self = self_.safe_add(rhs).into(),
+            _ => {}
+        };
+    }
+}
+
+impl AddAssign<MathResult<Decimal>> for MathResult<Decimal> {
+    fn add_assign(&mut self, rhs: MathResult<Decimal>) {
+        match self {
+            MathResult::Ok(self_) => match rhs {
+                MathResult::Ok(rhs) => *self = self_.safe_add(rhs).into(),
+                _ => {}
+            },
+            _ => {}
+        };
+    }
+}
+
+impl SubAssign<Decimal> for MathResult<Decimal> {
+    fn sub_assign(&mut self, rhs: Decimal) {
+        match self {
+            MathResult::Ok(self_) => *self = self_.safe_sub(rhs).into(),
+            _ => {}
+        };
+    }
+}
+
+impl SubAssign<MathResult<Decimal>> for MathResult<Decimal> {
+    fn sub_assign(&mut self, rhs: MathResult<Decimal>) {
+        match self {
+            MathResult::Ok(self_) => match rhs {
+                MathResult::Ok(rhs) => *self = self_.safe_sub(rhs).into(),
+                _ => {}
+            },
+            _ => {}
+        };
+    }
+}
+
+impl MulAssign<Decimal> for MathResult<Decimal> {
+    fn mul_assign(&mut self, rhs: Decimal) {
+        match self {
+            MathResult::Ok(self_) => *self = self_.safe_mul(rhs).into(),
+            _ => {}
+        };
+    }
+}
+
+impl MulAssign<MathResult<Decimal>> for MathResult<Decimal> {
+    fn mul_assign(&mut self, rhs: MathResult<Decimal>) {
+        match self {
+            MathResult::Ok(self_) => match rhs {
+                MathResult::Ok(rhs) => *self = self_.safe_mul(rhs).into(),
+                _ => {}
+            },
+            _ => {}
+        };
+    }
+}
+
+impl DivAssign<Decimal> for MathResult<Decimal> {
+    fn div_assign(&mut self, rhs: Decimal) {
+        match self {
+            MathResult::Ok(self_) => *self = self_.safe_div(rhs).into(),
+            _ => {}
+        };
+    }
+}
+
+impl DivAssign<MathResult<Decimal>> for MathResult<Decimal> {
+    fn div_assign(&mut self, rhs: MathResult<Decimal>) {
+        match self {
+            MathResult::Ok(self_) => match rhs {
+                MathResult::Ok(rhs) => *self = self_.safe_div(rhs).into(),
+                _ => {}
+            },
+            _ => {}
+        };
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -694,7 +899,27 @@ mod tests {
         let a = dec!(42);
         let b = dec!(2);
         let c = dec!("1.5");
-        let result = a + b + c + b;
+        let d = dec!(10);
+        let result = a - b + c + b * (d + b / d);
+        assert_eq!(result, dec!("61.9"));
+    }
+
+    #[test]
+    fn test_math_operators_assign() {
+        let mut result: MathResult<Decimal> = dec!(2) + dec!(1);
+        // assigns with Decimal
+        result += dec!(3);
+        result -= dec!(1);
+        result *= dec!(4);
+        result /= dec!(2);
+        assert_eq!(result, dec!(10));
+        // assigns with MathResult<Decimal>
+        let mut result: MathResult<Decimal> = dec!(10).into();
+        result += dec!(5) + dec!(5);
+        result -= dec!(2) - dec!(1);
+        result *= dec!(4) * dec!(3);
+        result /= dec!(4) / dec!(2);
+        assert_eq!(result, dec!(114));
     }
 
     #[test]
