@@ -619,7 +619,7 @@ try_from_integer!(I192, I256, I512, U192, U256, U512);
 
 #[derive(Debug)]
 pub enum MathResult<T> {
-    Err,  // can be extended with specific error types like Overflow or DivZero
+    Err, // can be extended with specific error types like Overflow or DivZero
     Ok(T),
 }
 
@@ -888,6 +888,24 @@ impl DivAssign<MathResult<Decimal>> for MathResult<Decimal> {
     }
 }
 
+/// Workaround until `Try` trait (https://doc.rust-lang.org/std/ops/trait.Try.html)
+/// is merged to Rust main and not nightly anymore only.
+///
+/// Tracking: https://github.com/rust-lang/rust/issues/84277
+///
+/// Further details: https://rust-lang.github.io/rfcs/3058-try-trait-v2.html
+#[macro_export]
+macro_rules! mtry {
+    ($expr:expr $(,)?) => {
+        match $expr {
+            MathResult::Ok(val) => val,
+            MathResult::Err => {
+                return MathResult::Err;
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -920,6 +938,18 @@ mod tests {
         result *= dec!(4) * dec!(3);
         result /= dec!(4) / dec!(2);
         assert_eq!(result, dec!(114));
+    }
+
+    fn math_calc_test(a: Decimal) -> MathResult<Decimal> {
+        let result1 = mtry!(a + dec!(4));
+        let result2 = mtry!(result1 * dec!(4));
+        let final_result = dec!(30) - result2;
+        final_result
+    }
+
+    #[test]
+    fn test_math_operators_try() {
+        assert_eq!(math_calc_test(dec!(2)), dec!(6));
     }
 
     #[test]
