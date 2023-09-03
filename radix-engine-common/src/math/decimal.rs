@@ -661,6 +661,15 @@ impl<T: PartialEq> PartialEq<T> for MathResult<T> {
     }
 }
 
+impl PartialEq<MathResult<Decimal>> for Decimal {
+    fn eq(&self, other: &MathResult<Decimal>) -> bool {
+        match other {
+            MathResult::Ok(other_) => self == other_,
+            _ => false,
+        }
+    }
+}
+
 impl<T> From<Option<T>> for MathResult<T> {
     fn from(opt: Option<T>) -> Self {
         match opt {
@@ -920,6 +929,7 @@ mod tests {
         let d = dec!(10);
         let result = a - b + c + b * (d + b / d);
         assert_eq!(result, dec!("61.9"));
+        assert_eq!(dec!("61.9"), result);
     }
 
     #[test]
