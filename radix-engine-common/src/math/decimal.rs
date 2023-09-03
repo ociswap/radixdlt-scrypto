@@ -619,7 +619,7 @@ try_from_integer!(I192, I256, I512, U192, U256, U512);
 
 #[derive(Debug)]
 pub enum MathResult<T> {
-    Err,
+    Err,  // can be extended with specific error types like Overflow or DivZero
     Ok(T),
 }
 
