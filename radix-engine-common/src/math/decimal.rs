@@ -8,6 +8,7 @@ use sbor::rust::fmt;
 use sbor::rust::format;
 use sbor::rust::prelude::*;
 use sbor::*;
+use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 use crate::data::manifest::ManifestCustomValueKind;
 use crate::data::scrypto::*;
@@ -616,11 +617,373 @@ macro_rules! try_from_integer {
 }
 try_from_integer!(I192, I256, I512, U192, U256, U512);
 
+#[derive(Debug, Clone)]
+pub enum MathResult<T> {
+    Err, // can be extended with specific error types like Overflow or DivZero
+    Ok(T),
+}
+
+impl<T> MathResult<T> {
+    pub fn expect(self, msg: &str) -> T {
+        match self {
+            MathResult::Ok(value) => value,
+            MathResult::Err => {
+                panic!("{}", msg);
+            }
+        }
+    }
+    pub fn unwrap(self) -> T {
+        match self {
+            MathResult::Ok(value) => value,
+            MathResult::Err => panic!("called `MathResult::unwrap()` on an `Err` value"),
+        }
+    }
+
+    pub fn unwrap_or(self, default: T) -> T {
+        match self {
+            MathResult::Ok(value) => value,
+            MathResult::Err => default,
+        }
+    }
+
+    pub fn unwrap_or_else<F>(self, f: F) -> T
+    where
+        F: FnOnce() -> T,
+    {
+        match self {
+            MathResult::Ok(value) => value,
+            MathResult::Err => f(),
+        }
+    }
+
+    pub fn unwrap_or_default(self) -> T
+    where
+        T: Default,
+    {
+        match self {
+            MathResult::Ok(value) => value,
+            MathResult::Err => T::default(),
+        }
+    }
+
+    pub fn and_then<U, F>(self, f: F) -> MathResult<U>
+    where
+        F: FnOnce(T) -> MathResult<U>,
+    {
+        match self {
+            MathResult::Ok(value) => f(value),
+            MathResult::Err => MathResult::Err,
+        }
+    }
+}
+
+impl<T> From<Option<T>> for MathResult<T> {
+    fn from(opt: Option<T>) -> Self {
+        match opt {
+            Some(value) => MathResult::Ok(value),
+            None => MathResult::Err,
+        }
+    }
+}
+
+impl<T> From<T> for MathResult<T> {
+    fn from(value: T) -> Self {
+        MathResult::Ok(value)
+    }
+}
+
+impl Add for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn add(self, other: Decimal) -> MathResult<Decimal> {
+        self.safe_add(other).into()
+    }
+}
+
+impl Add<MathResult<Decimal>> for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn add(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.safe_add(other_).into())
+    }
+}
+
+impl Add<Decimal> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn add(self, other: Decimal) -> MathResult<Decimal> {
+        self.and_then(|self_| self_.safe_add(other).into())
+    }
+}
+
+impl Add<MathResult<Decimal>> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn add(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.and_then(|self_| self_.safe_add(other_).into()))
+    }
+}
+
+impl Sub for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn sub(self, other: Decimal) -> MathResult<Decimal> {
+        self.safe_sub(other).into()
+    }
+}
+
+impl Sub<MathResult<Decimal>> for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn sub(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.safe_sub(other_).into())
+    }
+}
+
+impl Sub<Decimal> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn sub(self, other: Decimal) -> MathResult<Decimal> {
+        self.and_then(|self_| self_.safe_sub(other).into())
+    }
+}
+
+impl Sub<MathResult<Decimal>> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn sub(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.and_then(|self_| self_.safe_sub(other_).into()))
+    }
+}
+
+impl Mul for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn mul(self, other: Decimal) -> MathResult<Decimal> {
+        self.safe_mul(other).into()
+    }
+}
+
+impl Mul<MathResult<Decimal>> for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn mul(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.safe_mul(other_).into())
+    }
+}
+
+impl Mul<Decimal> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn mul(self, other: Decimal) -> MathResult<Decimal> {
+        self.and_then(|self_| self_.safe_mul(other).into())
+    }
+}
+
+impl Mul<MathResult<Decimal>> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn mul(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.and_then(|self_| self_.safe_mul(other_).into()))
+    }
+}
+
+impl Div for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn div(self, other: Decimal) -> MathResult<Decimal> {
+        self.safe_div(other).into()
+    }
+}
+
+impl Div<MathResult<Decimal>> for Decimal {
+    type Output = MathResult<Decimal>;
+
+    fn div(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.safe_div(other_).into())
+    }
+}
+
+impl Div<Decimal> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn div(self, other: Decimal) -> MathResult<Decimal> {
+        self.and_then(|self_| self_.safe_div(other).into())
+    }
+}
+
+impl Div<MathResult<Decimal>> for MathResult<Decimal> {
+    type Output = MathResult<Decimal>;
+
+    fn div(self, other: MathResult<Decimal>) -> MathResult<Decimal> {
+        other.and_then(|other_| self.and_then(|self_| self_.safe_div(other_).into()))
+    }
+}
+
+impl AddAssign<Decimal> for MathResult<Decimal> {
+    fn add_assign(&mut self, rhs: Decimal) {
+        match self {
+            MathResult::Ok(self_) => *self = self_.safe_add(rhs).into(),
+            _ => {}
+        };
+    }
+}
+
+impl AddAssign<MathResult<Decimal>> for MathResult<Decimal> {
+    fn add_assign(&mut self, rhs: MathResult<Decimal>) {
+        match self {
+            MathResult::Ok(self_) => match rhs {
+                MathResult::Ok(rhs) => *self = self_.safe_add(rhs).into(),
+                _ => {}
+            },
+            _ => {}
+        };
+    }
+}
+
+impl SubAssign<Decimal> for MathResult<Decimal> {
+    fn sub_assign(&mut self, rhs: Decimal) {
+        match self {
+            MathResult::Ok(self_) => *self = self_.safe_sub(rhs).into(),
+            _ => {}
+        };
+    }
+}
+
+impl SubAssign<MathResult<Decimal>> for MathResult<Decimal> {
+    fn sub_assign(&mut self, rhs: MathResult<Decimal>) {
+        match self {
+            MathResult::Ok(self_) => match rhs {
+                MathResult::Ok(rhs) => *self = self_.safe_sub(rhs).into(),
+                _ => {}
+            },
+            _ => {}
+        };
+    }
+}
+
+impl MulAssign<Decimal> for MathResult<Decimal> {
+    fn mul_assign(&mut self, rhs: Decimal) {
+        match self {
+            MathResult::Ok(self_) => *self = self_.safe_mul(rhs).into(),
+            _ => {}
+        };
+    }
+}
+
+impl MulAssign<MathResult<Decimal>> for MathResult<Decimal> {
+    fn mul_assign(&mut self, rhs: MathResult<Decimal>) {
+        match self {
+            MathResult::Ok(self_) => match rhs {
+                MathResult::Ok(rhs) => *self = self_.safe_mul(rhs).into(),
+                _ => {}
+            },
+            _ => {}
+        };
+    }
+}
+
+impl DivAssign<Decimal> for MathResult<Decimal> {
+    fn div_assign(&mut self, rhs: Decimal) {
+        match self {
+            MathResult::Ok(self_) => *self = self_.safe_div(rhs).into(),
+            _ => {}
+        };
+    }
+}
+
+impl DivAssign<MathResult<Decimal>> for MathResult<Decimal> {
+    fn div_assign(&mut self, rhs: MathResult<Decimal>) {
+        match self {
+            MathResult::Ok(self_) => match rhs {
+                MathResult::Ok(rhs) => *self = self_.safe_div(rhs).into(),
+                _ => {}
+            },
+            _ => {}
+        };
+    }
+}
+
+/// Workaround until `Try` trait (https://doc.rust-lang.org/std/ops/trait.Try.html)
+/// is merged to Rust main and not nightly anymore only.
+///
+/// Tracking: https://github.com/rust-lang/rust/issues/84277
+///
+/// Further details: https://rust-lang.github.io/rfcs/3058-try-trait-v2.html
+#[macro_export]
+macro_rules! q {
+    ($expr:expr $(,)?) => {
+        match $expr {
+            MathResult::Ok(val) => val,
+            MathResult::Err => {
+                return MathResult::Err;
+            }
+        }
+    };
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::dec;
     use paste::paste;
+
+    #[test]
+    fn test_math_operators() {
+        let a = dec!(42);
+        let b = dec!(2);
+        let c = dec!("1.5");
+        let d = dec!(10);
+        let result = a - b + c + b * (d + b / d);
+        assert_eq!(result.unwrap(), dec!("61.9"));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_math_expect() {
+        let result_overflow: MathResult<Decimal> = MathResult::Err;
+        result_overflow.expect("Result has an overflow error.");
+    }
+
+    #[test]
+    fn test_math_unwrap() {
+        let result_overflow: MathResult<Decimal> = MathResult::Err;
+        assert_eq!(result_overflow.unwrap_or(dec!(1)), dec!(1));
+        let result_overflow: MathResult<Decimal> = MathResult::Err;
+        assert_eq!(result_overflow.unwrap_or_default(), dec!(0));
+        let result_overflow: MathResult<Decimal> = MathResult::Err;
+        assert_eq!(result_overflow.unwrap_or_else(|| dec!(1)), dec!(1));
+    }
+
+    #[test]
+    fn test_math_operators_assign() {
+        let mut result: MathResult<Decimal> = dec!(2) + dec!(1);
+        // assigns with Decimal
+        result += dec!(3);
+        result -= dec!(1);
+        result *= dec!(4);
+        result /= dec!(2);
+        assert_eq!(result.unwrap(), dec!(10));
+        let mut result: MathResult<Decimal> = dec!(10).into();
+        // assigns with MathResult<Decimal>
+        result += dec!(5) + dec!(5);
+        result -= dec!(2) - dec!(1);
+        result *= dec!(4) * dec!(3);
+        result /= dec!(4) / dec!(2);
+        assert_eq!(result.unwrap(), dec!(114));
+    }
+
+    fn math_calc_test(a: Decimal) -> MathResult<Decimal> {
+        let result1 = q!(a + dec!(4));
+        let result2 = q!(result1 * dec!(4));
+        let final_result = dec!(30) - result2;
+        final_result
+    }
+
+    #[test]
+    fn test_math_operators_try() {
+        assert_eq!(math_calc_test(dec!(2)).unwrap(), dec!(6));
+    }
 
     #[test]
     fn test_format_decimal() {
