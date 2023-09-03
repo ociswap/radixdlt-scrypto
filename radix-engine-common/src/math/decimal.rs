@@ -895,7 +895,7 @@ impl DivAssign<MathResult<Decimal>> for MathResult<Decimal> {
 ///
 /// Further details: https://rust-lang.github.io/rfcs/3058-try-trait-v2.html
 #[macro_export]
-macro_rules! mtry {
+macro_rules! q {
     ($expr:expr $(,)?) => {
         match $expr {
             MathResult::Ok(val) => val,
@@ -941,8 +941,8 @@ mod tests {
     }
 
     fn math_calc_test(a: Decimal) -> MathResult<Decimal> {
-        let result1 = mtry!(a + dec!(4));
-        let result2 = mtry!(result1 * dec!(4));
+        let result1 = q!(a + dec!(4));
+        let result2 = q!(result1 * dec!(4));
         let final_result = dec!(30) - result2;
         final_result
     }
