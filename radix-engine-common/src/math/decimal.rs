@@ -617,17 +617,52 @@ macro_rules! try_from_integer {
 }
 try_from_integer!(I192, I256, I512, U192, U256, U512);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum MathResult<T> {
     Err, // can be extended with specific error types like Overflow or DivZero
     Ok(T),
 }
 
 impl<T> MathResult<T> {
+    pub fn expect(self, msg: &str) -> T {
+        match self {
+            MathResult::Ok(value) => value,
+            MathResult::Err => {
+                panic!("{}", msg);
+            }
+        }
+    }
     pub fn unwrap(self) -> T {
         match self {
-            MathResult::Err => panic!("Unwrapping None"),
             MathResult::Ok(value) => value,
+            MathResult::Err => panic!("called `MathResult::unwrap()` on an `Err` value"),
+        }
+    }
+
+    pub fn unwrap_or(self, default: T) -> T {
+        match self {
+            MathResult::Ok(value) => value,
+            MathResult::Err => default,
+        }
+    }
+
+    pub fn unwrap_or_else<F>(self, f: F) -> T
+    where
+        F: FnOnce() -> T,
+    {
+        match self {
+            MathResult::Ok(value) => value,
+            MathResult::Err => f(),
+        }
+    }
+
+    pub fn unwrap_or_default(self) -> T
+    where
+        T: Default,
+    {
+        match self {
+            MathResult::Ok(value) => value,
+            MathResult::Err => T::default(),
         }
     }
 
@@ -636,36 +671,8 @@ impl<T> MathResult<T> {
         F: FnOnce(T) -> MathResult<U>,
     {
         match self {
-            MathResult::Err => MathResult::Err,
             MathResult::Ok(value) => f(value),
-        }
-    }
-}
-
-impl<T: PartialEq> PartialEq for MathResult<T> {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (MathResult::Err, MathResult::Err) => true,
-            (MathResult::Ok(value1), MathResult::Ok(value2)) => value1 == value2,
-            _ => false,
-        }
-    }
-}
-
-impl<T: PartialEq> PartialEq<T> for MathResult<T> {
-    fn eq(&self, other: &T) -> bool {
-        match self {
-            MathResult::Ok(self_) => self_ == other,
-            _ => false,
-        }
-    }
-}
-
-impl PartialEq<MathResult<Decimal>> for Decimal {
-    fn eq(&self, other: &MathResult<Decimal>) -> bool {
-        match other {
-            MathResult::Ok(other_) => self == other_,
-            _ => false,
+            MathResult::Err => MathResult::Err,
         }
     }
 }
@@ -928,8 +935,24 @@ mod tests {
         let c = dec!("1.5");
         let d = dec!(10);
         let result = a - b + c + b * (d + b / d);
-        assert_eq!(result, dec!("61.9"));
-        assert_eq!(dec!("61.9"), result);
+        assert_eq!(result.unwrap(), dec!("61.9"));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_math_expect() {
+        let result_overflow: MathResult<Decimal> = MathResult::Err;
+        result_overflow.expect("Result has an overflow error.");
+    }
+
+    #[test]
+    fn test_math_unwrap() {
+        let result_overflow: MathResult<Decimal> = MathResult::Err;
+        assert_eq!(result_overflow.unwrap_or(dec!(1)), dec!(1));
+        let result_overflow: MathResult<Decimal> = MathResult::Err;
+        assert_eq!(result_overflow.unwrap_or_default(), dec!(0));
+        let result_overflow: MathResult<Decimal> = MathResult::Err;
+        assert_eq!(result_overflow.unwrap_or_else(|| dec!(1)), dec!(1));
     }
 
     #[test]
@@ -940,14 +963,14 @@ mod tests {
         result -= dec!(1);
         result *= dec!(4);
         result /= dec!(2);
-        assert_eq!(result, dec!(10));
+        assert_eq!(result.unwrap(), dec!(10));
         let mut result: MathResult<Decimal> = dec!(10).into();
         // assigns with MathResult<Decimal>
         result += dec!(5) + dec!(5);
         result -= dec!(2) - dec!(1);
         result *= dec!(4) * dec!(3);
         result /= dec!(4) / dec!(2);
-        assert_eq!(result, dec!(114));
+        assert_eq!(result.unwrap(), dec!(114));
     }
 
     fn math_calc_test(a: Decimal) -> MathResult<Decimal> {
@@ -959,7 +982,7 @@ mod tests {
 
     #[test]
     fn test_math_operators_try() {
-        assert_eq!(math_calc_test(dec!(2)), dec!(6));
+        assert_eq!(math_calc_test(dec!(2)).unwrap(), dec!(6));
     }
 
     #[test]
